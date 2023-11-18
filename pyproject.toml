@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["skrob"]
+
+[project]
+name = "skrob"
+readme = "README.md"
+authors = [
+    {name="Mikolaj Wielgus", email="wielgusmikolaj@gmail.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python 3",
+    "Programming Language :: Python 3.8",
+    "Programming Language :: Python 3.9",
+    "Programming Language :: Python 3.10",
+    "Programming Language :: Python 3.11",
+    "Internet :: WWW/HTTP",
+]
+
+version = "0.1.0.alpha"
+license = {text = "0BSD"}
+
+dependencies = ["aiohttp", "parsel"]
+requires-python = ">=3.8"
+
+[project.urls]
+repository = "https://github.com/mikwielgus/skrob"
+
+[project.optional-dependencies]
+test = ["pytest"]
