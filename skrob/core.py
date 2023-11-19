@@ -1,14 +1,12 @@
-import logging
-import aiohttp
 import asyncio
 import parsel
 from dataclasses import dataclass
-from urllib.parse import urljoin
+from abc import ABC, abstractmethod
 from typing import List
 
 @dataclass
 class Context:
-    url: str
+    locator: str
     text: str
 
 @dataclass
@@ -24,35 +22,32 @@ class Follow:
     pass
 
 @dataclass
-class Select:
+class Select(ABC):
     query: str
 
-@dataclass
-class CssSelect(Select):
+    @abstractmethod
     def select(self, text):
-        return parsel.Selector(text).css(self.query).getall()
-
-@dataclass
-class XpathSelect(Select):
-    def select(self, text):
-        return parsel.Selector(text).xpath(self.query).getall()
+        raise NotImplementedError
 
 @dataclass
 class RunBlock:
     statements: List[str]
 
-class Skrob:
-    def __init__(self, start_url, code):
-        self._entry_url = start_url
+class SkrobCore(ABC):
+    def __init__(self, code):
         self._code = code
-        self._visited_urls = set()
 
-    async def run(self):
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit_per_host=4)) as session:
-            async def get_contexts():
-                return [Context(self._entry_url, self._entry_url)]
+    @abstractmethod
+    async def run(self, start):
+        raise NotImplementedError
 
-            await self._run_block(session, self._fetch_contexts(session, get_contexts()), self._code)
+    async def run_with_session(self, session, start_context):
+        self._visited_locators = set()
+
+        async def get_contexts():
+            return [start_context]
+
+        await self._run_block(session, self._follow_texts(session, get_contexts()), self._code)
 
     async def _run_block(self, session, get_contexts, block):
         tasks = []
@@ -73,8 +68,7 @@ class Skrob:
                                                                          get_context(context))))
                     get_contexts = None
                 elif isinstance(token, Follow):
-                    get_contexts = self._fetch_contexts(session, get_contexts or
-                                                                 get_context(context))
+                    get_contexts = self._follow_texts(session, get_contexts or get_context(context))
                 elif isinstance(token, Select):
                     get_contexts = self._select_texts(get_contexts or get_context(context), token)
                 elif isinstance(token, RunBlock):
@@ -103,27 +97,33 @@ class Skrob:
         for context in await get_contexts:
             print(context.text)
 
-    async def _fetch_contexts(self, session, get_contexts):
+    async def _follow_texts(self, session, get_contexts):
         contexts = []
 
         for context in await get_contexts:
-            url = urljoin(context.url, context.text)
+            locator = self.join(context.locator, context.text)
 
-            if url in self._visited_urls:
+            if locator in self._visited_locators:
                 continue
 
-            self._visited_urls.add(url)
-
-            async with session.get(url) as response:
-                contexts.append(Context(url, await response.text()))
+            self._visited_locators.add(locator)
+            contexts.append(await self.follow(session, locator))
 
         return contexts
+
+    @abstractmethod
+    async def follow(self, session, locator):
+        raise NotImplementedError
+
+    @abstractmethod
+    async def join(self, base, locator):
+        raise NotImplementedError
 
     async def _select_texts(self, get_contexts, selector):
         contexts = []
 
         for context in await get_contexts:
             for selectee in selector.select(context.text):
-                contexts.append(Context(context.url, selectee))
+                contexts.append(Context(context.locator, selectee))
 
         return contexts
