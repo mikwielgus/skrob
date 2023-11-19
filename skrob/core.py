@@ -14,10 +14,6 @@ class Collect:
     pass
 
 @dataclass
-class Discard:
-    pass
-
-@dataclass
 class Follow:
     pass
 
@@ -58,21 +54,17 @@ class SkrobCore(ABC):
 
             get_contexts = None
 
-            for token in block.statements:
-                if isinstance(token, Collect):
+            for statement in block.statements:
+                if isinstance(statement, Collect):
                     tasks.append(asyncio.create_task(self._output_texts(get_contexts or
                                                                         get_context(context))))
                     get_contexts = None
-                elif isinstance(token, Discard):
-                    tasks.append(asyncio.create_task(self._discard_texts(get_contexts or
-                                                                         get_context(context))))
-                    get_contexts = None
-                elif isinstance(token, Follow):
+                elif isinstance(statement, Follow):
                     get_contexts = self._follow_texts(session, get_contexts or get_context(context))
-                elif isinstance(token, Select):
-                    get_contexts = self._select_texts(get_contexts or get_context(context), token)
-                elif isinstance(token, RunBlock):
-                    get_contexts = self._run_block(session, get_contexts or get_context(context), token)
+                elif isinstance(statement, Select):
+                    get_contexts = self._select_texts(get_contexts or get_context(context), statement)
+                elif isinstance(statement, RunBlock):
+                    get_contexts = self._run_block(session, get_contexts or get_context(context), statement)
                 else:
                     raise
 
@@ -89,9 +81,6 @@ class SkrobCore(ABC):
             return block_result
 
         return context
-
-    async def _discard_texts(self, get_contexts):
-        await get_contexts
 
     async def _output_texts(self, get_contexts):
         for context in await get_contexts:
