@@ -1,7 +1,16 @@
 import asyncio
-import parsel
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+
+def flatten(it):
+    return list(iflatten(it))
+
+def iflatten(it):
+    for e in it:
+        if hasattr(e, "__iter__") and not isinstance(e, (str, bytes)):
+            yield from flatten(e)
+        else:
+            yield e
 
 @dataclass
 class Context:
@@ -28,7 +37,8 @@ class Select(ABC):
     def select(self, text):
         raise NotImplementedError
 
-class SkrobCore(ABC):
+"""Abstract interpreter of the BCFS (Block-Collect-Follow-Select) abstract programming language"""
+class Bcfs(ABC):
     def __init__(self, code):
         self._code = code
 
@@ -73,7 +83,7 @@ class SkrobCore(ABC):
                                                                                         block),
                                                                         context)))
 
-        return list(filter(None, parsel.utils.flatten(await asyncio.gather(*tasks))))
+        return list(filter(None, flatten(await asyncio.gather(*tasks))))
 
     async def _mux_block_result(self, block, context):
         if block_result := await block:

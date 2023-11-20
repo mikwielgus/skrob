@@ -1,4 +1,4 @@
-from .core import Context, Block, Collect, Follow, Select, SkrobCore
+from .bcfs import Context, Block, Collect, Follow, Select, Bcfs
 
 from dataclasses import dataclass
 from parsel import Selector
@@ -89,7 +89,7 @@ class CssSelect(Select):
         query = re.sub(r"(^|(?<=[^\\]))!", ":not(*)", self.query)
         return Selector(text).css(query).getall()
 
-class Skrob(SkrobCore):
+class Skrob(Bcfs):
     def __init__(self, code):
         if isinstance(code, str):
             self._code = parse(code)
