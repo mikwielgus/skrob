@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from parsel import Selector
 from aiohttp import ClientSession, TCPConnector
 from urllib.parse import urljoin
+from json import JSONDecodeError
+import dicttoxml
+import json
 
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
@@ -96,7 +99,14 @@ class Skrob(SkrobCore):
 
     async def follow(self, session, url):
         async with session.get(url) as response:
-            return Context(url, await response.text())
+            text = await response.text()
+
+            try:
+                text = dicttoxml.dicttoxml(json.loads(text), return_bytes=False)
+            except JSONDecodeError:
+                pass
+
+            return Context(url, text)
 
     def join(self, base, url):
         return urljoin(base, url)
