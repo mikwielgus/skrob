@@ -2,12 +2,15 @@ import asyncio
 import parsel
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
-from typing import List
 
 @dataclass
 class Context:
     locator: str
     text: str
+
+@dataclass
+class Block:
+    commands: list
 
 @dataclass
 class Collect:
@@ -25,10 +28,6 @@ class Select(ABC):
     def select(self, text):
         raise NotImplementedError
 
-@dataclass
-class RunBlock:
-    statements: List[str]
-
 class SkrobCore(ABC):
     def __init__(self, code):
         self._code = code
@@ -43,9 +42,9 @@ class SkrobCore(ABC):
         async def get_contexts():
             return [start_context]
 
-        await self._run_block(session, self._follow_texts(session, get_contexts()), self._code)
+        await self._block(session, self._follow_texts(session, get_contexts()), self._code)
 
-    async def _run_block(self, session, get_contexts, block):
+    async def _block(self, session, get_contexts, block):
         tasks = []
 
         for context in await get_contexts:
@@ -54,30 +53,30 @@ class SkrobCore(ABC):
 
             get_contexts = None
 
-            for statement in block.statements:
-                if isinstance(statement, Collect):
+            for command in block.commands:
+                if isinstance(command, Block):
+                    get_contexts = self._block(session, get_contexts or get_context(context), command)
+                elif isinstance(command, Collect):
                     tasks.append(asyncio.create_task(self._output_texts(get_contexts or
                                                                         get_context(context))))
                     get_contexts = None
-                elif isinstance(statement, Follow):
+                elif isinstance(command, Follow):
                     get_contexts = self._follow_texts(session, get_contexts or get_context(context))
-                elif isinstance(statement, Select):
-                    get_contexts = self._select_texts(get_contexts or get_context(context), statement)
-                elif isinstance(statement, RunBlock):
-                    get_contexts = self._run_block(session, get_contexts or get_context(context), statement)
+                elif isinstance(command, Select):
+                    get_contexts = self._select_texts(get_contexts or get_context(context), command)
                 else:
                     raise
 
             if get_contexts:
-                tasks.append(asyncio.create_task(self._mux_block_result(self._run_block(session,
+                tasks.append(asyncio.create_task(self._mux_block_result(self._block(session,
                                                                                         get_contexts,
                                                                                         block),
                                                                         context)))
 
         return list(filter(None, parsel.utils.flatten(await asyncio.gather(*tasks))))
 
-    async def _mux_block_result(self, run_block, context):
-        if block_result := await run_block:
+    async def _mux_block_result(self, block, context):
+        if block_result := await block:
             return block_result
 
         return context
