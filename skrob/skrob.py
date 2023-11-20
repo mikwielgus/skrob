@@ -14,7 +14,7 @@ import json
 import re
 
 grammar = Grammar(
-    """
+    r"""
     script = commands{1}
     commands = ws_commands ws
     ws_commands = ws_command*
@@ -25,9 +25,10 @@ grammar = Grammar(
     follow = '->'
     select = xpath_select / css_select
     xpath_select = '`' xpath '`'
-    xpath = ~'[^`]*'
+    xpath = (escaped_backtick / ~'[^`]')*
+    escaped_backtick = '\\`'
     css_select = (!terminal ~'.')+
-    terminal = ~'[{};`]' / '->'
+    terminal = '->' / ~'[{};`]'
     ws = ~'\s*'
     """
 )
@@ -65,6 +66,9 @@ class Visitor(NodeVisitor):
 
     def visit_xpath(self, node, visited_children):
         return XpathSelect(node.text)
+
+    def visit_escaped_backtick(self, node, visited_children):
+        return "`"
 
     def visit_css_select(self, node, visited_children):
         return CssSelect(node.text)
