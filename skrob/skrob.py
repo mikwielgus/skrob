@@ -5,11 +5,13 @@ from parsel import Selector
 from aiohttp import ClientSession, TCPConnector
 from urllib.parse import urljoin
 from json import JSONDecodeError
-import dicttoxml
-import json
 
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
+
+import dicttoxml
+import json
+import re
 
 grammar = Grammar(
     """
@@ -84,7 +86,8 @@ class XpathSelect(Select):
 @dataclass
 class CssSelect(Select):
     def select(self, text):
-        return Selector(text).css(self.query).getall()
+        query = re.sub(r"(^|(?<=[^\\]))!", ":not(*)", self.query)
+        return Selector(text).css(query).getall()
 
 class Skrob(SkrobCore):
     def __init__(self, code):
