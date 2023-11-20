@@ -32,3 +32,6 @@ repository = "https://github.com/mikwielgus/skrob"
 
 [project.optional-dependencies]
 test = ["pytest"]
+
+[project.scripts]
+skrob = "skrob.cli:main"

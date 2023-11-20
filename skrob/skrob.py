@@ -90,8 +90,8 @@ class Skrob(SkrobCore):
         else:
             self._code = code
 
-    async def run(self, start_url):
-        async with ClientSession(connector=TCPConnector(limit_per_host=4)) as session:
+    async def run(self, start_url, **kwargs):
+        async with ClientSession(connector=TCPConnector(**kwargs)) as session:
             return await self.run_with_session(session, Context(start_url, start_url))
 
     async def follow(self, session, url):
