@@ -3,20 +3,24 @@ from argparse import ArgumentParser
 from aiohttp import TCPConnector
 import importlib.metadata
 import asyncio
+import sys
 
 def main():
+    run(sys.argv)
+
+def run(argv):
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(argv[1:])
 
     skrob = Skrob(args.code)
-    asyncio.run(skrob.run(args.url, limit=args.max_connections,
+    asyncio.run(skrob.run(args.url or sys.stdin.read(), limit=args.max_connections,
                           limit_per_host=args.max_connections_per_host))
 
 def build_parser():
     parser = ArgumentParser(add_help=False)
 
-    parser.add_argument("url", metavar="URL");
     parser.add_argument("code", metavar="CODE");
+    parser.add_argument("url", metavar="URL", nargs="*");
 
     parser.add_argument(
         "--help",

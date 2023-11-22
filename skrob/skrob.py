@@ -100,9 +100,21 @@ class Skrob(Bcfs):
         else:
             self._code = code
 
-    async def run(self, start_url, **kwargs):
+    async def run(self, args, **kwargs):
         async with ClientSession(connector=TCPConnector(**kwargs)) as session:
-            return await self.run_with_session(session, Context(start_url, start_url))
+            # Convenience special handling in case we get input from stdin.
+            if isinstance(args, list):
+                async def get_contexts():
+                    return list(map(lambda url: Context(url, url), args))
+
+                self._visited_locators = set()
+                initial = await self._follow_contexts(session, get_contexts())
+            elif isinstance(args, str):
+                initial = [Context("", args)]
+            else:
+                raise
+
+            return await self._run_with_session(session, initial)
 
     async def follow(self, session, url):
         async with session.get(url) as response:

@@ -37,22 +37,22 @@ class Select(ABC):
     def select(self, text):
         raise NotImplementedError
 
-"""Abstract interpreter of the BCFS (Block-Collect-Follow-Select) abstract programming language"""
+"""Abstract interpreter of the BCFS (Block-Collect-Follow-Select) abstract scripting language"""
 class Bcfs(ABC):
     def __init__(self, code):
         self._code = code
 
     @abstractmethod
-    async def run(self, start):
+    async def run(self, *args, **kwargs):
         raise NotImplementedError
 
-    async def run_with_session(self, session, start_context):
+    async def _run_with_session(self, session, initial_contexts):
         self._visited_locators = set()
 
         async def get_contexts():
-            return [start_context]
+            return initial_contexts
 
-        await self._block(session, self._follow_texts(session, get_contexts()), self._code)
+        await self._block(session, get_contexts(), self._code)
 
     async def _block(self, session, get_contexts, block):
         tasks = []
@@ -71,7 +71,7 @@ class Bcfs(ABC):
                                                                         get_context(context))))
                     get_contexts = None
                 elif isinstance(command, Follow):
-                    get_contexts = self._follow_texts(session, get_contexts or get_context(context))
+                    get_contexts = self._follow_contexts(session, get_contexts or get_context(context))
                 elif isinstance(command, Select):
                     get_contexts = self._select_texts(get_contexts or get_context(context), command)
                 else:
@@ -95,7 +95,7 @@ class Bcfs(ABC):
         for context in await get_contexts:
             print(context.text)
 
-    async def _follow_texts(self, session, get_contexts):
+    async def _follow_contexts(self, session, get_contexts):
         contexts = []
 
         for context in await get_contexts:
