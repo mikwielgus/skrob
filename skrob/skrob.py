@@ -112,7 +112,7 @@ class Skrob(Bcfs):
             elif isinstance(args, str):
                 initial = [Context("", args)]
             else:
-                raise
+                raise ValueError
 
             return await self._run_with_session(session, initial)
 

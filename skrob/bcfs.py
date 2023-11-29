@@ -55,41 +55,42 @@ class Bcfs(ABC):
         await self._block(session, get_contexts(), self._code)
 
     async def _block(self, session, get_contexts, block):
-        tasks = []
+        while True:
+            tasks = []
+            contexts = await get_contexts
 
-        for context in await get_contexts:
-            async def get_context(context):
-                return [context]
+            for context in contexts:
+                async def get_context(context):
+                    return [context]
 
-            get_contexts = None
+                get_contexts = None
 
-            for command in block.commands:
-                if isinstance(command, Block):
-                    get_contexts = self._block(session, get_contexts or get_context(context), command)
-                elif isinstance(command, Collect):
-                    tasks.append(asyncio.create_task(self._output_texts(get_contexts or
-                                                                        get_context(context))))
-                    get_contexts = None
-                elif isinstance(command, Follow):
-                    get_contexts = self._follow_contexts(session, get_contexts or get_context(context))
-                elif isinstance(command, Select):
-                    get_contexts = self._select_texts(get_contexts or get_context(context), command)
-                else:
-                    raise
+                for command in block.commands:
+                    if isinstance(command, Block):
+                        get_contexts = self._block(session, get_contexts or get_context(context), command)
+                    elif isinstance(command, Collect):
+                        tasks.append(asyncio.create_task(self._output_texts(get_contexts or
+                                                                            get_context(context))))
+                        get_contexts = None
+                    elif isinstance(command, Follow):
+                        get_contexts = self._follow_contexts(session, get_contexts or get_context(context))
+                    elif isinstance(command, Select):
+                        get_contexts = self._select_texts(get_contexts or get_context(context), command)
+                    else:
+                        raise ValueError
 
-            if get_contexts:
-                tasks.append(asyncio.create_task(self._mux_block_result(self._block(session,
-                                                                                        get_contexts,
-                                                                                        block),
-                                                                        context)))
+                if get_contexts:
+                    tasks.append(asyncio.create_task(get_contexts))
 
-        return list(filter(None, flatten(await asyncio.gather(*tasks))))
+            new_contexts = list(filter(None, flatten(await asyncio.gather(*tasks))))       
 
-    async def _mux_block_result(self, block, context):
-        if block_result := await block:
-            return block_result
+            if not new_contexts:
+                return contexts
 
-        return context
+            async def get_new_contexts(new_contexts):
+                return new_contexts
+
+            get_contexts = get_new_contexts(new_contexts)
 
     async def _output_texts(self, get_contexts):
         for context in await get_contexts:
