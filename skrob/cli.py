@@ -6,13 +6,13 @@ import asyncio
 import sys
 
 def main():
-    run(sys.argv)
+    run(sys.argv, sys.stdout)
 
-def run(argv):
+def run(argv, stream):
     parser = build_parser()
     args = parser.parse_args(argv[1:])
 
-    skrob = Skrob(args.code)
+    skrob = Skrob(args.code, stream)
     asyncio.run(skrob.run(args.url or sys.stdin.read(), limit=args.max_connections,
                           limit_per_host=args.max_connections_per_host))
 

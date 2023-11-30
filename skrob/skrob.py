@@ -11,6 +11,7 @@ from parsimonious.nodes import NodeVisitor
 
 import dicttoxml
 import json
+import sys
 import re
 
 grammar = Grammar(
@@ -72,7 +73,7 @@ class Visitor(NodeVisitor):
 
     def visit_css_select(self, node, visited_children):
         return CssSelect(node.text)
-    
+
     def generic_visit(self, node, visited_children):
         return None
 
@@ -94,11 +95,13 @@ class CssSelect(Select):
         return Selector(text).css(query).getall()
 
 class Skrob(Bcfs):
-    def __init__(self, code):
+    def __init__(self, code, stream=sys.stdout):
         if isinstance(code, str):
             self._code = parse(code)
         else:
             self._code = code
+
+        self._stream = stream
 
     async def run(self, args, **kwargs):
         async with ClientSession(connector=TCPConnector(**kwargs)) as session:
@@ -115,6 +118,9 @@ class Skrob(Bcfs):
                 raise ValueError
 
             return await self._run_with_session(session, initial)
+
+    def print(self, text):
+        self._stream.write(text + "\n")
 
     async def follow(self, session, url):
         async with session.get(url) as response:

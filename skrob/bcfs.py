@@ -94,7 +94,11 @@ class Bcfs(ABC):
 
     async def _output_texts(self, get_contexts):
         for context in await get_contexts:
-            print(context.text)
+            self.print(context.text)
+
+    @abstractmethod
+    def print(self, text):
+        raise NotImplementedError
 
     async def _follow_contexts(self, session, get_contexts):
         contexts = []
@@ -115,7 +119,7 @@ class Bcfs(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def join(self, base, locator):
+    def join(self, base, locator):
         raise NotImplementedError
 
     async def _select_texts(self, get_contexts, selector):
