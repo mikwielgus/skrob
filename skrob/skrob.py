@@ -10,6 +10,7 @@ from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
 import dicttoxml
+import parsel
 import json
 import sys
 import re
@@ -86,7 +87,14 @@ def parse(code):
 @dataclass
 class XpathSelect(Select):
     def select(self, text):
-        return Selector(text).xpath(self.query).getall()
+        def string_join(context, nodeset, sep=''):
+            return sep.join(map(lambda n: n if isinstance(n, str) else n.text_content(), nodeset))
+
+        parsel.xpathfuncs.set_xpathfunc("string-join", string_join)
+        result = Selector(text).xpath(self.query).getall()
+
+        parsel.xpathfuncs.set_xpathfunc("string-join", None)
+        return result
 
 @dataclass
 class CssSelect(Select):
