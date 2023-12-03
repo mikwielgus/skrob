@@ -6,10 +6,10 @@ def run_then_compare(argv, reference):
         skrob.cli.run(["skrob"] + argv, stream)
         assert stream.getvalue() == reference
 
-def run_then_count(argv, count):
+def run_then_count(argv, substring, count):
     with StringIO() as stream:
         skrob.cli.run(["skrob"] + argv, stream)
-        assert stream.getvalue().count("<cooked") == count
+        assert stream.getvalue().count(substring) == count
 
 def test_hackernews_json_thread_upward():
     run_then_compare(["""
@@ -17,7 +17,7 @@ def test_hackernews_json_thread_upward():
             id::text;
             by::text;
             parent
-                `concat('https://hacker-news.firebaseio.com/v0/item/', //text(), '.json')`
+                `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')`
                 ->
         } {
             url::text;
@@ -35,6 +35,18 @@ def test_hackernews_json_thread_upward():
         "http://ycombinator.com\n",
     )
 
+def test_hackernews_json_thread_downward():
+    run_then_count(["""
+        {
+            id::text;
+            kids item
+                `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')`
+                ->
+        } !;
+    """,
+    "https://hacker-news.firebaseio.com/v0/item/1.json"], "\n", 18)
+
+
 def test_discourse_json_thread():
     run_then_count(["-n", "1",
     """
@@ -46,5 +58,5 @@ def test_discourse_json_thread():
             {->;} !;
     """,
     "https://try.discourse.org/t/what-happens-when-a-topic-has-over-1000-replies/301.json"],
-                   1000)
+                   "<cooked", 1000)
 
