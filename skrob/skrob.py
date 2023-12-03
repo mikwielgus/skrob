@@ -5,6 +5,7 @@ from parsel import Selector
 from aiohttp import ClientSession, TCPConnector
 from urllib.parse import urljoin
 from json import JSONDecodeError
+from lxml import etree
 
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
@@ -90,10 +91,26 @@ class XpathSelect(Select):
         def string_join(context, nodeset, sep=''):
             return sep.join(map(lambda n: n if isinstance(n, str) else n.text_content(), nodeset))
 
+        def split(context, nodeset, length):
+            chunks = []
+
+            for i in range(0, len(nodeset), int(length)):
+                chunk = etree.Element("chunk")
+
+                for node in nodeset[i:i + int(length)]:
+                    chunk.append(node)
+
+                chunks.append(chunk)
+            
+            return chunks
+
         parsel.xpathfuncs.set_xpathfunc("string-join", string_join)
+        parsel.xpathfuncs.set_xpathfunc("split", split)
+
         result = Selector(text).xpath(self.query).getall()
 
         parsel.xpathfuncs.set_xpathfunc("string-join", None)
+        parsel.xpathfuncs.set_xpathfunc("split", None)
         return result
 
 @dataclass
