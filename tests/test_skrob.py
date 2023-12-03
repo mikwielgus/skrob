@@ -11,6 +11,17 @@ def run_then_count(argv, substring, count):
         skrob.cli.run(["skrob"] + argv, stream)
         assert stream.getvalue().count(substring) == count
 
+def test_phpbb_html_thread():
+    run_then_count(["""
+        {
+            .content;
+            a[rel='next']::attr(href)
+                ->
+        } !;
+    """,
+    "https://www.phpbb.com/community/viewtopic.php?t=2118"], "class=\"content\"", 60)
+
+
 def test_hackernews_json_thread_upward():
     run_then_compare(["""
         {
