@@ -18,12 +18,12 @@ def test_phpbb_html_thread():
     run_then_count(
         [
             """
-        {
-            .content;
-            a[rel='next']::attr(href)
-                ->
-        } !;
-    """,
+            {
+                .content;
+                a[rel='next']::attr(href)
+                    ->
+            } !;
+            """,
             "https://www.phpbb.com/community/viewtopic.php?t=2118",
         ],
         'class="content"',
@@ -31,20 +31,41 @@ def test_phpbb_html_thread():
     )
 
 
+def test_phpbb_html_subforum():
+    run_then_count(
+        [
+            """
+            {
+                .topictitle::attr(href) -> {
+                    .content;
+                    a[rel='next']::attr(href)
+                        ->
+                } !;
+                a[rel='next']::attr(href)
+                    ->
+            } !;
+            """,
+            "https://www.phpbb.com/community/viewforum.php?f=691",
+        ],
+        'class="content"',
+        1519,
+    )
+
+
 def test_hackernews_json_thread_upward():
     run_then_compare(
         [
             """
-        {
-            id::text;
-            by::text;
-            parent
-                `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')`
-                ->
-        } {
-            url::text;
-        } !;
-        """,
+            {
+                id::text;
+                by::text;
+                parent
+                    `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')`
+                    ->
+            } {
+                url::text;
+            } !;
+            """,
             "https://hacker-news.firebaseio.com/v0/item/1079.json",
         ],
         "1079\n"
