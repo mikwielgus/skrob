@@ -36,6 +36,7 @@ grammar = Grammar(
     """
 )
 
+
 class Visitor(NodeVisitor):
     def visit_script(self, node, visited_children):
         return Block(visited_children[0])
@@ -54,7 +55,7 @@ class Visitor(NodeVisitor):
 
     def visit_block(self, node, visited_children):
         return Block(visited_children[2])
-    
+
     def visit_collect(self, node, visited_children):
         return Collect()
 
@@ -79,17 +80,21 @@ class Visitor(NodeVisitor):
     def generic_visit(self, node, visited_children):
         return None
 
+
 def parse(code):
     tree = grammar.parse(code)
 
     visitor = Visitor()
     return visitor.visit(tree)
 
+
 @dataclass
 class XpathSelect(Select):
     def select(self, text):
-        def string_join(context, nodeset, sep=''):
-            return sep.join(map(lambda n: n if isinstance(n, str) else n.text_content(), nodeset))
+        def string_join(context, nodeset, sep=""):
+            return sep.join(
+                map(lambda n: n if isinstance(n, str) else n.text_content(), nodeset)
+            )
 
         def split(context, nodeset, length):
             chunks = []
@@ -97,11 +102,11 @@ class XpathSelect(Select):
             for i in range(0, len(nodeset), int(length)):
                 chunk = etree.Element("chunk")
 
-                for node in nodeset[i:i + int(length)]:
+                for node in nodeset[i : i + int(length)]:
                     chunk.append(node)
 
                 chunks.append(chunk)
-            
+
             return chunks
 
         parsel.xpathfuncs.set_xpathfunc("string-join", string_join)
@@ -113,11 +118,13 @@ class XpathSelect(Select):
         parsel.xpathfuncs.set_xpathfunc("split", None)
         return result
 
+
 @dataclass
 class CssSelect(Select):
     def select(self, text):
         query = re.sub(r"(^|(?<=[^\\]))!", ":not(*)", self.query)
         return Selector(text).css(query).getall()
+
 
 class Skrob(Bcfs):
     def __init__(self, code, stream=sys.stdout):
@@ -132,6 +139,7 @@ class Skrob(Bcfs):
         async with ClientSession(connector=TCPConnector(**kwargs)) as session:
             # Convenience special handling in case we get input from stdin.
             if isinstance(args, list):
+
                 async def get_contexts():
                     return list(map(lambda url: Context(url, url), args))
 

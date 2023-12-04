@@ -2,8 +2,10 @@ import asyncio
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 
+
 def flatten(it):
     return list(iflatten(it))
+
 
 def iflatten(it):
     for e in it:
@@ -12,22 +14,27 @@ def iflatten(it):
         else:
             yield e
 
+
 @dataclass
 class Context:
     locator: str
     text: str
 
+
 @dataclass
 class Block:
     commands: list
+
 
 @dataclass
 class Collect:
     pass
 
+
 @dataclass
 class Follow:
     pass
+
 
 @dataclass
 class Select(ABC):
@@ -37,7 +44,10 @@ class Select(ABC):
     def select(self, text):
         raise NotImplementedError
 
+
 """Abstract interpreter of the BCFS (Block-Collect-Follow-Select) abstract scripting language"""
+
+
 class Bcfs(ABC):
     def __init__(self, code):
         self._code = code
@@ -60,6 +70,7 @@ class Bcfs(ABC):
             contexts = await get_contexts
 
             for context in contexts:
+
                 async def get_context(context):
                     return [context]
 
@@ -67,22 +78,31 @@ class Bcfs(ABC):
 
                 for command in block.commands:
                     if isinstance(command, Block):
-                        get_contexts = self._block(session, get_contexts or get_context(context), command)
+                        get_contexts = self._block(
+                            session, get_contexts or get_context(context), command
+                        )
                     elif isinstance(command, Collect):
-                        tasks.append(asyncio.create_task(self._output_texts(get_contexts or
-                                                                            get_context(context))))
+                        tasks.append(
+                            asyncio.create_task(
+                                self._output_texts(get_contexts or get_context(context))
+                            )
+                        )
                         get_contexts = None
                     elif isinstance(command, Follow):
-                        get_contexts = self._follow_contexts(session, get_contexts or get_context(context))
+                        get_contexts = self._follow_contexts(
+                            session, get_contexts or get_context(context)
+                        )
                     elif isinstance(command, Select):
-                        get_contexts = self._select_texts(get_contexts or get_context(context), command)
+                        get_contexts = self._select_texts(
+                            get_contexts or get_context(context), command
+                        )
                     else:
                         raise ValueError
 
                 if get_contexts:
                     tasks.append(asyncio.create_task(get_contexts))
 
-            new_contexts = list(filter(None, flatten(await asyncio.gather(*tasks))))       
+            new_contexts = list(filter(None, flatten(await asyncio.gather(*tasks))))
 
             if not new_contexts:
                 return contexts
