@@ -127,13 +127,14 @@ class CssSelect(Select):
 
 
 class Skrob(Bcfs):
-    def __init__(self, code, stream=sys.stdout):
+    def __init__(self, code, output_stream=sys.stdout, error_stream=sys.stderr):
         if isinstance(code, str):
             self._code = parse(code)
         else:
             self._code = code
 
-        self._stream = stream
+        self._output_stream = output_stream
+        self._error_stream = error_stream
 
     async def run(self, args, **kwargs):
         async with ClientSession(connector=TCPConnector(**kwargs)) as session:
@@ -153,9 +154,11 @@ class Skrob(Bcfs):
             return await self._run_with_session(session, initial)
 
     def print(self, text):
-        self._stream.write(text + "\n")
+        self._output_stream.write(text + "\n")
 
     async def follow(self, session, url):
+        self._error_stream.write(url + "\n")
+
         async with session.get(url) as response:
             text = await response.text()
 
