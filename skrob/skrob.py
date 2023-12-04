@@ -3,9 +3,9 @@ from .bcfs import Context, Block, Collect, Follow, Select, Bcfs
 from dataclasses import dataclass
 from parsel import Selector
 from aiohttp import ClientSession, TCPConnector
-from urllib.parse import urljoin
 from json import JSONDecodeError
 from lxml import etree
+from yarl import URL
 
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
@@ -100,22 +100,96 @@ class XpathSelect(Select):
             chunks = []
 
             for i in range(0, len(nodeset), int(length)):
-                chunk = etree.Element("chunk")
+                chunk_node = etree.Element("chunk")
 
                 for node in nodeset[i : i + int(length)]:
-                    chunk.append(node)
+                    chunk_node.append(node)
 
-                chunks.append(chunk)
+                chunks.append(chunk_node)
 
             return chunks
 
+        def url_parse(context, nodeset):
+            url = URL(string_join(context, nodeset))
+            url_node = etree.Element("url")
+
+            scheme_node = etree.SubElement(url_node, "scheme")
+            scheme_node.text = str(url.scheme or "")
+
+            user_node = etree.SubElement(url_node, "user")
+            user_node.text = str(url.user or "")
+
+            password_node = etree.SubElement(url_node, "password")
+            password_node.text = str(url.password or "")
+
+            host_node = etree.SubElement(url_node, "host")
+            host_node.text = str(url.host or "")
+
+            port_node = etree.SubElement(url_node, "port")
+            port_node.text = str(url.explicit_port or "")
+
+            path_node = etree.SubElement(url_node, "path")
+            path_node.text = str(url.path or "")
+
+            query_node = etree.SubElement(url_node, "query")
+
+            for key, value in url.query.items():
+                query_subnode = etree.SubElement(query_node, key)
+                query_subnode.text = value
+
+            fragment_node = etree.SubElement(url_node, "fragment")
+            fragment_node.text = url.fragment
+
+            return url_node
+
+        def url_unparse(context, nodeset):
+            (node,) = nodeset
+
+            scheme = node.find("scheme").text or None
+            user = node.find("user").text or None
+            password = node.find("password").text or None
+            host = node.find("host").text or None
+            port = node.find("port").text or None
+            path = node.find("path").text or None
+
+            query = []
+            for query_subnode in node.find("query"):
+                query.append((query_subnode.tag, query_subnode.text))
+
+            fragment = node.find("fragment").text
+
+            return str(
+                URL.build(
+                    scheme=scheme,
+                    user=user,
+                    password=password,
+                    host=host,
+                    port=port,
+                    path=path,
+                    query=query,
+                    fragment=fragment,
+                )
+            )
+
+        def url_join(context, base, url):
+            return str(
+                URL(string_join(context, base)).join(URL(string_join(context, url)))
+            )
+
         parsel.xpathfuncs.set_xpathfunc("string-join", string_join)
         parsel.xpathfuncs.set_xpathfunc("split", split)
+        parsel.xpathfuncs.set_xpathfunc("url-parse", url_parse)
+        parsel.xpathfuncs.set_xpathfunc("url-unparse", url_unparse)
+        parsel.xpathfuncs.set_xpathfunc("url-join", url_join)
 
         result = Selector(text).xpath(self.query).getall()
 
         parsel.xpathfuncs.set_xpathfunc("string-join", None)
         parsel.xpathfuncs.set_xpathfunc("split", None)
+        parsel.xpathfuncs.set_xpathfunc("url-parse", None)
+        parsel.xpathfuncs.set_xpathfunc("url-unparse", None)
+        parsel.xpathfuncs.set_xpathfunc("url-join", None)
+
         return result
 
 
@@ -127,14 +201,14 @@ class CssSelect(Select):
 
 
 class Skrob(Bcfs):
-    def __init__(self, code, output_stream=sys.stdout, error_stream=sys.stderr):
+    def __init__(self, code, output_stream=sys.stdout, follow_stream=sys.stderr):
         if isinstance(code, str):
             self._code = parse(code)
         else:
             self._code = code
 
         self._output_stream = output_stream
-        self._error_stream = error_stream
+        self._follow_stream = follow_stream
 
     async def run(self, args, **kwargs):
         async with ClientSession(connector=TCPConnector(**kwargs)) as session:
@@ -157,7 +231,7 @@ class Skrob(Bcfs):
         self._output_stream.write(text + "\n")
 
     async def follow(self, session, url):
-        self._error_stream.write(url + "\n")
+        self._follow_stream.write(url + "\n")
 
         async with session.get(url) as response:
             text = await response.text()
@@ -170,4 +244,4 @@ class Skrob(Bcfs):
             return Context(url, text)
 
     def join(self, base, url):
-        return urljoin(base, url)
+        return str(URL(base).join(URL(url)))

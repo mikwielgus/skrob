@@ -24,7 +24,7 @@ classifiers = [
 version = "0.1.0.alpha"
 license = {text = "0BSD"}
 
-dependencies = ["aiohttp", "dicttoxml", "lxml", "parsel", "parsimonious"]
+dependencies = ["aiohttp", "dicttoxml", "lxml", "parsel", "parsimonious", "yarl"]
 requires-python = ">=3.8"
 
 [project.urls]

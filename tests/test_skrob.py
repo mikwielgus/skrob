@@ -20,8 +20,7 @@ def test_phpbb_html_thread():
             """
             {
                 .content;
-                a[rel='next']::attr(href)
-                    ->
+                a[rel='next']::attr(href) ->
             } !;
             """,
             "https://www.phpbb.com/community/viewtopic.php?t=2118",
@@ -32,18 +31,20 @@ def test_phpbb_html_thread():
 
 
 def test_phpbb_html_subforum():
+    # Note: the number of topics PhpBB shows is different than the number of extracted ones. This
+    # may either be a bug or some threads or posts may be just hidden.
     run_then_count(
         [
             """
-            {
-                .topictitle::attr(href) -> {
-                    .content;
-                    a[rel='next']::attr(href)
-                        ->
-                } !;
-                a[rel='next']::attr(href)
-                    ->
-            } !;
+{
+    .topictitle::attr(href) -> {
+        .content;
+        a[rel='next']::attr(href)
+            ->
+    } !;
+    a[rel='next']::attr(href)
+        ->
+} !;
             """,
             "https://www.phpbb.com/community/viewforum.php?f=691",
         ],
@@ -59,9 +60,7 @@ def test_hackernews_json_thread_upward():
             {
                 id::text;
                 by::text;
-                parent
-                    `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')`
-                    ->
+                parent `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')` ->
             } {
                 url::text;
             } !;
@@ -86,9 +85,7 @@ def test_hackernews_json_thread_downward():
             """
         {
             id::text;
-            kids item
-                `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')`
-                ->
+            kids item `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')` ->
         } !;
     """,
             "https://hacker-news.firebaseio.com/v0/item/1.json",
@@ -104,14 +101,32 @@ def test_discourse_json_thread():
             "-n",
             "1",
             """
-        ;
-        post_stream stream
-            `split(//item, 20)[position()>=2]`
-            `concat('https://try.discourse.org/t/301/posts.json?post_ids[]=',
-                    string-join(//chunk/item, '&post_ids[]='))`
-            {->;} !;
-    """,
+            ;
+            post_stream stream
+                `split(//item, 20)[position()>=2]`
+                `concat('https://try.discourse.org/t/301/posts.json?post_ids[]=',
+                        string-join(//chunk/item, '&post_ids[]='))`
+                {->;} !;
+            """,
             "https://try.discourse.org/t/what-happens-when-a-topic-has-over-1000-replies/301.json",
+        ],
+        "<cooked",
+        1000,
+    )
+
+
+def test_discourse_json_latest():
+    run_then_count(
+        [
+            "-n",
+            "1",
+            """
+            {
+                topic_list;
+                more_topics_url::text ->
+            } !;
+            """,
+            "https://try.discourse.org/latest.json",
         ],
         "<cooked",
         1000,
