@@ -36,15 +36,13 @@ def test_phpbb_html_subforum():
     run_then_count(
         [
             """
-{
-    .topictitle::attr(href) -> {
-        .content;
-        a[rel='next']::attr(href)
-            ->
-    } !;
-    a[rel='next']::attr(href)
-        ->
-} !;
+            {
+                .topictitle::attr(href) -> {
+                    .content;
+                    a[rel='next']::attr(href) ->
+                } !;
+                a[rel='next']::attr(href) ->
+            } !;
             """,
             "https://www.phpbb.com/community/viewforum.php?f=691",
         ],
@@ -112,4 +110,22 @@ def test_discourse_json_thread():
         ],
         "<cooked",
         1000,
+    )
+
+
+def test_discourse_json_latest():
+    run_then_count(
+        [
+            "-n",
+            "1",
+            """
+            {
+                topic_list topics;
+                more_topics_url::text `re:replace(., 'latest\?', '', 'latest.json?')` ->
+            } !;
+            """,
+            "https://try.discourse.org/latest.json",
+        ],
+        "<id",
+        46,
     )
