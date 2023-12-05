@@ -91,6 +91,17 @@ def parse(code):
 @dataclass
 class XpathSelect(Select):
     def select(self, text):
+        def node_join(context, nodeset):
+            if len(nodeset) == 1:
+                return nodeset[0]
+
+            joined_node = etree.Element("joined")
+
+            for node in nodeset:
+                joined_node.append(node)
+
+            return joined_node
+
         def string_join(context, nodeset, sep=""):
             return sep.join(
                 map(lambda n: n if isinstance(n, str) else n.text_content(), nodeset)
@@ -117,16 +128,16 @@ class XpathSelect(Select):
             scheme_node.text = str(url.scheme or "")
 
             user_node = etree.SubElement(url_node, "user")
-            user_node.text = str(url.user or "")
+            user_node.text = url.user or None
 
             password_node = etree.SubElement(url_node, "password")
-            password_node.text = str(url.password or "")
+            password_node.text = url.password or None
 
             host_node = etree.SubElement(url_node, "host")
             host_node.text = str(url.host or "")
 
             port_node = etree.SubElement(url_node, "port")
-            port_node.text = str(url.explicit_port or "")
+            port_node.text = url.explicit_port or None
 
             path_node = etree.SubElement(url_node, "path")
             path_node.text = str(url.path or "")
@@ -143,20 +154,33 @@ class XpathSelect(Select):
             return url_node
 
         def url_unparse(context, nodeset):
-            (node,) = nodeset
+            node = node_join(context, nodeset)
 
-            scheme = node.find("scheme").text or None
-            user = node.find("user").text or None
-            password = node.find("password").text or None
-            host = node.find("host").text or None
-            port = node.find("port").text or None
-            path = node.find("path").text or None
+            scheme_node = node.find("scheme")
+            scheme = scheme_node.text if scheme_node is not None else ""
+
+            user_node = node.find("user")
+            user = user_node.text if user_node is not None else None
+
+            password_node = node.find("password")
+            password = password_node.text if password_node is not None else None
+
+            host_node = node.find("host")
+            host = host_node.text if host_node is not None else ""
+
+            port_node = node.find("port")
+            port = port_node.text if port_node is not None else None
+
+            path_node = node.find("path")
+            path = path_node.text if path_node is not None else ""
 
             query = []
-            for query_subnode in node.find("query"):
-                query.append((query_subnode.tag, query_subnode.text))
+            if (query_node := node.find("query")) is not None:
+                for query_subnode in query_node:
+                    query.append((query_subnode.tag, query_subnode.text))
 
-            fragment = node.find("fragment").text
+            fragment_node = node.find("fragment")
+            fragment = fragment_node.text if fragment_node is not None else ""
 
             return str(
                 URL.build(
@@ -176,6 +200,7 @@ class XpathSelect(Select):
                 URL(string_join(context, base)).join(URL(string_join(context, url)))
             )
 
+        parsel.xpathfuncs.set_xpathfunc("node-join", string_join)
         parsel.xpathfuncs.set_xpathfunc("string-join", string_join)
         parsel.xpathfuncs.set_xpathfunc("split", split)
         parsel.xpathfuncs.set_xpathfunc("url-parse", url_parse)
@@ -184,6 +209,7 @@ class XpathSelect(Select):
 
         result = Selector(text).xpath(self.query).getall()
 
+        parsel.xpathfuncs.set_xpathfunc("node-join", None)
         parsel.xpathfuncs.set_xpathfunc("string-join", None)
         parsel.xpathfuncs.set_xpathfunc("split", None)
         parsel.xpathfuncs.set_xpathfunc("url-parse", None)
