@@ -1,6 +1,7 @@
-import asyncio
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from asyncio import Queue
+import asyncio
 
 
 def flatten(it):
@@ -58,11 +59,15 @@ class Bcfs(ABC):
 
     async def _run_with_session(self, session, initial_contexts):
         self._visited_locators = set()
+        self._bg_tasks = Queue()
 
         async def get_contexts():
             return initial_contexts
 
         await self._block(session, get_contexts(), self._code)
+
+        while not self._bg_tasks.empty():
+            await (await self._bg_tasks.get())
 
     async def _block(self, session, get_contexts, block):
         while True:
@@ -82,7 +87,7 @@ class Bcfs(ABC):
                             session, get_contexts or get_context(context), command
                         )
                     elif isinstance(command, Collect):
-                        tasks.append(
+                        await self._bg_tasks.put(
                             asyncio.create_task(
                                 self._output_texts(get_contexts or get_context(context))
                             )

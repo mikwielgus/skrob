@@ -130,9 +130,9 @@ class CssSelect(Select):
 class Skrob(Bcfs):
     def __init__(self, code, output_stream=sys.stdout, follow_stream=sys.stderr):
         if isinstance(code, str):
-            self._code = parse(code)
-        else:
-            self._code = code
+            code = parse(code)
+
+        super().__init__(code)
 
         self._output_stream = output_stream
         self._follow_stream = follow_stream
