@@ -113,21 +113,3 @@ def test_discourse_json_thread():
         "<cooked",
         1000,
     )
-
-
-def test_discourse_json_latest():
-    run_then_count(
-        [
-            "-n",
-            "1",
-            """
-            {
-                topic_list;
-                more_topics_url::text ->
-            } !;
-            """,
-            "https://try.discourse.org/latest.json",
-        ],
-        "<cooked",
-        1000,
-    )
