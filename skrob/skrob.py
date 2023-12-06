@@ -137,8 +137,10 @@ class Skrob(Bcfs):
         self._output_stream = output_stream
         self._follow_stream = follow_stream
 
-    async def run(self, args, **kwargs):
-        async with ClientSession(connector=TCPConnector(**kwargs)) as session:
+    async def run(self, args, timeout, **kwargs):
+        async with ClientSession(
+            connector=TCPConnector(**kwargs), timeout=timeout
+        ) as session:
             # Convenience special handling in case we get input from stdin.
             if isinstance(args, list):
 

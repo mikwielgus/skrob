@@ -1,6 +1,6 @@
 from skrob import Skrob
 from argparse import ArgumentParser
-from aiohttp import TCPConnector
+from aiohttp import ClientTimeout
 import importlib.metadata
 import asyncio
 import sys
@@ -18,8 +18,11 @@ def run(argv, stream):
     asyncio.run(
         skrob.run(
             args.url or sys.stdin.read(),
-            limit=args.max_connections,
             limit_per_host=args.max_connections_per_host,
+            limit=args.max_connections,
+            timeout=ClientTimeout(
+                connect=args.connect_timeout, total=args.total_timeout
+            ),
         )
     )
 
@@ -42,6 +45,15 @@ def build_parser():
         help="Print program version and exit",
     )
     parser.add_argument(
+        "-n",
+        "--max-connections-per-host",
+        metavar="N",
+        dest="max_connections_per_host",
+        default="4",
+        type=int,
+        help="Maximum number of simultaneous connections to the same endpoint (default: %(default)s)",
+    )
+    parser.add_argument(
         "-N",
         "--max-connections",
         metavar="N",
@@ -51,13 +63,22 @@ def build_parser():
         help="Maximum number of simultaneous connections (default: %(default)s)",
     )
     parser.add_argument(
-        "-n",
-        "--max-connections-per-host",
-        metavar="N",
-        dest="max_connections_per_host",
-        default="4",
-        type=int,
-        help="Maximum number of simultaneous connections to the same endpoint (default: %(default)s)",
+        "-t",
+        "--connect-timeout",
+        metavar="SECONDS",
+        dest="connect_timeout",
+        default="0.0",
+        type=float,
+        help="Maximum time in seconds available to establish a connection. Can be fractional, pass 0 to disable (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-T",
+        "--total-timeout",
+        metavar="SECONDS",
+        dest="total_timeout",
+        default="0.0",
+        type=float,
+        help="Maximum time in seconds available for each transfer, i.e. the maximum sum of time spent on establishing connection, sending the request, and reading the response. Can be fractional, pass 0 to disable (default: %(default)s)",
     )
 
     return parser
