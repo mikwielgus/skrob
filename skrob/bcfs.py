@@ -64,58 +64,69 @@ class Bcfs(ABC):
         async def get_contexts():
             return initial_contexts
 
-        await self._block(session, get_contexts(), self._code)
+        result = await self._execute_commands(session, get_contexts(), self._code)
 
         while not self._bg_tasks.empty():
             await (await self._bg_tasks.get())
 
-    async def _block(self, session, get_contexts, block):
+        if not isinstance(result, list):
+            return await result
+
+    async def _execute_commands(self, session, get_contexts, commands):
+        tasks = []
+        contexts = await get_contexts
+
+        for context in contexts:
+
+            async def get_context(context):
+                return [context]
+
+            get_contexts = None
+
+            for command in commands:
+                if isinstance(command, Block):
+                    get_contexts = self._execute_block(
+                        session, get_contexts or get_context(context), command
+                    )
+                elif isinstance(command, Collect):
+                    await self._bg_tasks.put(
+                        asyncio.create_task(
+                            self._output_texts(get_contexts or get_context(context))
+                        )
+                    )
+                    get_contexts = None
+                elif isinstance(command, Follow):
+                    get_contexts = self._follow_contexts(
+                        session, get_contexts or get_context(context)
+                    )
+                elif isinstance(command, Select):
+                    get_contexts = self._select_texts(
+                        get_contexts or get_context(context), command
+                    )
+                else:
+                    raise ValueError
+
+            if get_contexts:
+                tasks.append(asyncio.create_task(get_contexts))
+
+        new_contexts = list(filter(None, flatten(await asyncio.gather(*tasks))))
+
+        if not new_contexts:
+            return contexts
+
+        async def get_new_contexts(new_contexts):
+            return new_contexts
+
+        return get_new_contexts(new_contexts)
+
+    async def _execute_block(self, session, get_contexts, block):
         while True:
-            tasks = []
-            contexts = await get_contexts
+            result = await self._execute_commands(session, get_contexts, block.commands)
 
-            for context in contexts:
+            if isinstance(result, list):
+                return result
 
-                async def get_context(context):
-                    return [context]
-
-                get_contexts = None
-
-                for command in block.commands:
-                    if isinstance(command, Block):
-                        get_contexts = self._block(
-                            session, get_contexts or get_context(context), command
-                        )
-                    elif isinstance(command, Collect):
-                        await self._bg_tasks.put(
-                            asyncio.create_task(
-                                self._output_texts(get_contexts or get_context(context))
-                            )
-                        )
-                        get_contexts = None
-                    elif isinstance(command, Follow):
-                        get_contexts = self._follow_contexts(
-                            session, get_contexts or get_context(context)
-                        )
-                    elif isinstance(command, Select):
-                        get_contexts = self._select_texts(
-                            get_contexts or get_context(context), command
-                        )
-                    else:
-                        raise ValueError
-
-                if get_contexts:
-                    tasks.append(asyncio.create_task(get_contexts))
-
-            new_contexts = list(filter(None, flatten(await asyncio.gather(*tasks))))
-
-            if not new_contexts:
-                return contexts
-
-            async def get_new_contexts(new_contexts):
-                return new_contexts
-
-            get_contexts = get_new_contexts(new_contexts)
+            get_contexts = result
 
     async def _output_texts(self, get_contexts):
         for context in await get_contexts:

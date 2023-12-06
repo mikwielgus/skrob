@@ -143,5 +143,5 @@ def test_mastodon_json_user():
             "https://mastodon.social/api/v1/accounts/lookup?acct=Gargron",
         ],
         "<content",
-        783,
+        720,
     )

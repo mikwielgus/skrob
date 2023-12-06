@@ -39,7 +39,7 @@ grammar = Grammar(
 
 class Visitor(NodeVisitor):
     def visit_script(self, node, visited_children):
-        return Block(visited_children[0])
+        return visited_children[0]
 
     def visit_commands(self, node, visited_children):
         return visited_children[0]
