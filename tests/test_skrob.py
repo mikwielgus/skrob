@@ -129,3 +129,19 @@ def test_discourse_json_latest():
         "<id",
         46,
     )
+
+
+def test_mastodon_json_user():
+    run_then_count(
+        [
+            """
+            `concat('/api/v1/accounts/', //id, '/statuses?limit=40')` -> {
+                content;
+                `(//item/id)[last()]` `concat('statuses?limit=40&max_id=', .)` ->
+            } !;
+            """,
+            "https://mastodon.social/api/v1/accounts/lookup?acct=Gargron",
+        ],
+        "<content",
+        783,
+    )
