@@ -58,7 +58,7 @@ def test_hackernews_json_thread_upward():
             {
                 id::text;
                 by::text;
-                parent `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')` ->
+                parent %concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')% ->
             } {
                 url::text;
             } !;
@@ -83,7 +83,7 @@ def test_hackernews_json_thread_downward():
             """
         {
             id::text;
-            kids item `concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')` ->
+            kids item %concat('https://hacker-news.firebaseio.com/v0/item/', ., '.json')% ->
         } !;
     """,
             "https://hacker-news.firebaseio.com/v0/item/1.json",
@@ -101,9 +101,9 @@ def test_discourse_json_thread():
             """
             ;
             post_stream stream
-                `split(//item, 20)[position()>=2]`
-                `concat('https://try.discourse.org/t/301/posts.json?post_ids[]=',
-                        string-join(//chunk/item, '&post_ids[]='))`
+                %split(//item, 20)[position()>=2]%
+                %concat('https://try.discourse.org/t/301/posts.json?post_ids[]=',
+                        string-join(//chunk/item, '&post_ids[]='))%
                 {->;} !;
             """,
             "https://try.discourse.org/t/what-happens-when-a-topic-has-over-1000-replies/301.json",
@@ -121,7 +121,7 @@ def test_discourse_json_latest():
             """
             {
                 topic_list topics;
-                more_topics_url::text `re:replace(., 'latest\?', '', 'latest.json?')` ->
+                more_topics_url::text %re:replace(., 'latest\?', '', 'latest.json?')% ->
             } !;
             """,
             "https://try.discourse.org/latest.json",
@@ -135,9 +135,9 @@ def test_mastodon_json_user():
     run_then_count(
         [
             """
-            `concat('/api/v1/accounts/', //id, '/statuses?limit=40')` -> {
+            %concat('/api/v1/accounts/', //id, '/statuses?limit=40')% -> {
                 content;
-                `(//item/id)[last()]` `concat('statuses?limit=40&max_id=', .)` ->
+                %(//item/id)[last()]% %concat('statuses?limit=40&max_id=', .)% ->
             } !;
             """,
             "https://mastodon.social/api/v1/accounts/lookup?acct=Gargron",

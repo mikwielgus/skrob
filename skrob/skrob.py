@@ -27,11 +27,11 @@ grammar = Grammar(
     collect = ';'
     follow = '->'
     select = xpath_select / css_select
-    xpath_select = '`' xpath '`'
-    xpath = (escaped_backtick / ~'[^`]')*
-    escaped_backtick = '\\`'
+    xpath_select = '%' xpath '%'
+    xpath = (escaped_percent / ~'[^%]')*
+    escaped_percent = '\\%'
     css_select = (!terminal ~'.')+
-    terminal = '->' / ~'[{};`]'
+    terminal = '->' / ~'[{};%]'
     ws = ~'\s*'
     """
 )
@@ -71,8 +71,8 @@ class Visitor(NodeVisitor):
     def visit_xpath(self, node, visited_children):
         return XpathSelect(node.text)
 
-    def visit_escaped_backtick(self, node, visited_children):
-        return "`"
+    def visit_escaped_percent(self, node, visited_children):
+        return "%"
 
     def visit_css_select(self, node, visited_children):
         return CssSelect(node.text)
