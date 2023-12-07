@@ -10,6 +10,7 @@ from yarl import URL
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
+import traceback
 import dicttoxml
 import parsel
 import json
@@ -157,10 +158,20 @@ class Skrob(Bcfs):
             return await self._run_with_session(session, initial)
 
     def print(self, text):
-        self._output_stream.write(text + "\n")
+        try:
+            self._output_stream.write(text + "\n")
+            self._output_stream.flush()
+        except BrokenPipeError:
+            traceback.print_exc()
+            sys.exit(1)
 
     async def follow(self, session, url):
-        self._follow_stream.write(url + "\n")
+        try:
+            self._follow_stream.write(url + "\n")
+            self._follow_stream.flush()
+        except BrokenPipeError:
+            traceback.print_exc()
+            sys.exit(1)
 
         async with session.get(url) as response:
             text = await response.text()
