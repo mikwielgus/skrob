@@ -91,7 +91,7 @@ class Bcfs(ABC):
                 elif isinstance(command, Collect):
                     await self._bg_tasks.put(
                         asyncio.create_task(
-                            self._output_texts(get_contexts or get_context(context))
+                            self._print_texts(get_contexts or get_context(context))
                         )
                     )
                     get_contexts = None
@@ -128,7 +128,7 @@ class Bcfs(ABC):
 
             get_contexts = result
 
-    async def _output_texts(self, get_contexts):
+    async def _print_texts(self, get_contexts):
         for context in await get_contexts:
             self.print(context.text)
 

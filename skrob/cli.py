@@ -1,21 +1,30 @@
 from skrob import Skrob
 from argparse import ArgumentParser
 from aiohttp import ClientTimeout
+from contextlib import nullcontext
 import importlib.metadata
 import asyncio
 import sys
 
 
 def main():
-    run(sys.argv, sys.stdout)
+    with open_fd_3() as result_stream:
+        run(sys.argv, sys.stdout, sys.stderr, result_stream)
 
 
-def run(argv, stream):
+def open_fd_3():
+    try:
+        return open(3, "w")
+    except OSError:
+        return nullcontext()
+
+
+def run(argv, output_stream, follow_stream=sys.stderr, result_stream=None):
     parser = build_parser()
     args = parser.parse_args(argv[1:])
 
-    skrob = Skrob(args.code, stream)
-    asyncio.run(
+    skrob = Skrob(args.code, output_stream, follow_stream)
+    result = asyncio.run(
         skrob.run(
             args.url or sys.stdin.read(),
             limit_per_host=args.max_connections_per_host,
@@ -25,6 +34,10 @@ def run(argv, stream):
             ),
         )
     )
+
+    if result and result_stream:
+        for context in result:
+            result_stream.write(context.text + "\n")
 
 
 def build_parser():

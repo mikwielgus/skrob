@@ -3,15 +3,15 @@ from io import StringIO
 
 
 def run_then_compare(argv, reference):
-    with StringIO() as stream:
-        skrob.cli.run(["skrob"] + argv, stream)
-        assert stream.getvalue() == reference
+    with StringIO() as output_stream:
+        skrob.cli.run(["skrob"] + argv, output_stream)
+        assert output_stream.getvalue() == reference
 
 
 def run_then_count(argv, substring, count):
-    with StringIO() as stream:
-        skrob.cli.run(["skrob"] + argv, stream)
-        assert stream.getvalue().count(substring) == count
+    with StringIO() as output_stream:
+        skrob.cli.run(["skrob"] + argv, output_stream)
+        assert output_stream.getvalue().count(substring) == count
 
 
 def test_phpbb_html_thread():
