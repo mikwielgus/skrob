@@ -7,23 +7,50 @@ import asyncio
 import sys
 
 
+class Tee:
+    def __init__(self, stream1, stream2):
+        self._stream1 = stream1
+        self._stream2 = stream2
+
+    def write(self, data):
+        self._stream1.write(data)
+
+        if self._stream2:
+            self._stream2.write(data)
+
+    def flush(self):
+        self._stream1.flush()
+
+        if self._stream2:
+            self._stream2.flush()
+
+
 def main():
-    with open_fd_3() as result_stream:
-        run(sys.argv, sys.stdout, sys.stderr, result_stream)
+    with open_fd(3) as follow_stream:
+        with open_fd(4) as result_stream:
+            run(sys.argv, sys.stdout, sys.stderr, follow_stream, result_stream)
 
 
-def open_fd_3():
+def open_fd(fd):
     try:
-        return open(3, "w")
+        return open(fd, "w")
     except OSError:
         return nullcontext()
 
 
-def run(argv, output_stream, follow_stream=sys.stderr, result_stream=None):
+def run(
+    argv,
+    output_stream=sys.stdout,
+    log_stream=sys.stderr,
+    follow_stream=None,
+    result_stream=None,
+):
     parser = build_parser()
     args = parser.parse_args(argv[1:])
 
-    skrob = Skrob(args.code, output_stream, follow_stream)
+    log_and_follow_stream = Tee(log_stream, follow_stream)
+
+    skrob = Skrob(args.code, output_stream, log_and_follow_stream)
     result = asyncio.run(
         skrob.run(
             args.url or sys.stdin.read(),
