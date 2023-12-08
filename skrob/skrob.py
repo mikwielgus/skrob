@@ -129,14 +129,14 @@ class CssSelect(Select):
 
 
 class Skrob(Bcfs):
-    def __init__(self, code, output_stream=sys.stdout, follow_stream=sys.stderr):
+    def __init__(self, code, output_stream=sys.stdout, url_stream=sys.stderr):
         if isinstance(code, str):
             code = parse(code)
 
         super().__init__(code)
 
         self._output_stream = output_stream
-        self._follow_stream = follow_stream
+        self._url_stream = url_stream
 
     async def run(self, args, timeout, **kwargs):
         async with ClientSession(
@@ -159,16 +159,18 @@ class Skrob(Bcfs):
 
     def print(self, text):
         try:
-            self._output_stream.write(text + "\n")
-            self._output_stream.flush()
+            if self._output_stream:
+                self._output_stream.write(text + "\n")
+                self._output_stream.flush()
         except BrokenPipeError:
             traceback.print_exc()
             sys.exit(1)
 
     async def follow(self, session, url):
         try:
-            self._follow_stream.write(url + "\n")
-            self._follow_stream.flush()
+            if self._url_stream:
+                self._url_stream.write(url + "\n")
+                self._url_stream.flush()
         except BrokenPipeError:
             traceback.print_exc()
             sys.exit(1)

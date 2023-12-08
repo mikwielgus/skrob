@@ -26,9 +26,9 @@ class Tee:
 
 
 def main():
-    with open_fd(3) as follow_stream:
-        with open_fd(4) as result_stream:
-            run(sys.argv, sys.stdout, sys.stderr, follow_stream, result_stream)
+    with open_fd(3) as url_stream:
+        with open_fd(4) as passforward_stream:
+            run(sys.argv, sys.stdout, sys.stderr, url_stream, passforward_stream)
 
 
 def open_fd(fd):
@@ -42,15 +42,21 @@ def run(
     argv,
     output_stream=sys.stdout,
     log_stream=sys.stderr,
-    follow_stream=None,
-    result_stream=None,
+    url_stream=None,
+    passforward_stream=None,
 ):
     parser = build_parser()
     args = parser.parse_args(argv[1:])
 
-    log_and_follow_stream = Tee(log_stream, follow_stream)
+    log_and_url_stream = Tee(log_stream, url_stream)
 
-    skrob = Skrob(args.code, output_stream, log_and_follow_stream)
+    if args.get_urls:
+        url_stream, output_stream = output_stream, url_stream
+        log_and_url_stream = Tee(log_stream, None)
+    elif args.pass_forward:
+        passforward_stream, output_stream = output_stream, passforward_stream
+
+    skrob = Skrob(args.code, output_stream, log_and_url_stream)
     result = asyncio.run(
         skrob.run(
             args.url or sys.stdin.read(),
@@ -62,9 +68,9 @@ def run(
         )
     )
 
-    if result and result_stream:
+    if result and passforward_stream:
         for context in result:
-            result_stream.write(context.text + "\n")
+            passforward_stream.write(context.text + "\n")
 
 
 def build_parser():
@@ -84,6 +90,23 @@ def build_parser():
         version=importlib.metadata.version(__package__ or __name__),
         help="Print program version and exit",
     )
+
+    stream_group = parser.add_mutually_exclusive_group()
+    stream_group.add_argument(
+        "-u",
+        "--get-urls",
+        dest="get_urls",
+        action="store_true",
+        help="Print visited URLs (supressing tem from stderr) instead of the extracted results, and write the latter to fd 3 instead. Mutually exclusive with -p (default: %(default)s)",
+    )
+    stream_group.add_argument(
+        "-p",
+        "--pass-forward",
+        dest="pass_forward",
+        action="store_true",
+        help="Print the output of the last command instead of the extracted results, and write the latter to fd 4 instead. Mutually exclusive with -u (default: %(default)s)",
+    )
+
     parser.add_argument(
         "-n",
         "--max-connections-per-host",
@@ -116,7 +139,7 @@ def build_parser():
         "--total-timeout",
         metavar="SECONDS",
         dest="total_timeout",
-        default="0.0",
+        default="300.0",
         type=float,
         help="Maximum time in seconds available for each transfer, i.e. the maximum sum of time spent on establishing connection, sending the request, and reading the response. Can be fractional, pass 0 to disable (default: %(default)s)",
     )
