@@ -1,5 +1,23 @@
 import skrob.cli
+import pytest
 from io import StringIO
+
+
+class HeadStream:
+    def __init__(self, stream, max_lines):
+        self._stream = stream
+        self._max_lines = max_lines
+        self.counter = 0
+
+    def write(self, text):
+        self._stream.write(text)
+        self.counter += 1
+
+        if self.counter >= self._max_lines:
+            raise BrokenPipeError
+
+    def flush(self):
+        self._stream.flush()
 
 
 def run_then_compare(argv, reference):
@@ -12,6 +30,16 @@ def run_then_count(argv, substring, count):
     with StringIO() as output_stream:
         skrob.cli.run(["skrob"] + argv, output_stream)
         assert output_stream.getvalue().count(substring) == count
+
+
+def run_up_to_writes(argv, count):
+    with StringIO() as output_stream:
+        wrapped_stream = HeadStream(output_stream, count)
+
+        with pytest.raises(SystemExit):
+            skrob.cli.run(["skrob"] + argv, wrapped_stream)
+
+        assert wrapped_stream.counter == count
 
 
 def test_phpbb_html_thread():
@@ -132,16 +160,15 @@ def test_discourse_json_latest():
 
 
 def test_mastodon_json_user():
-    run_then_count(
+    run_up_to_writes(
         [
             """
             %concat('/api/v1/accounts/', //id, '/statuses?limit=40')% -> {
-                content;
-                %(//item/id)[last()]% %concat('statuses?limit=40&max_id=', .)% ->
+                root>item>content;
+                %(//root/item/id)[last()]% %concat('statuses?limit=40&max_id=', .)% ->
             } !;
             """,
             "https://mastodon.social/api/v1/accounts/lookup?acct=Gargron",
         ],
-        "<content",
-        720,
+        200,
     )
