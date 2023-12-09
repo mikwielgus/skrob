@@ -59,7 +59,7 @@ def run(
     skrob = Skrob(args.code, output_stream, log_and_url_stream)
     result = asyncio.run(
         skrob.run(
-            args.url or sys.stdin.read(),
+            args.url or (sys.stdin.read() if not sys.stdin.isatty() else ""),
             limit_per_host=args.max_connections_per_host,
             limit=args.max_connections,
             timeout=ClientTimeout(
