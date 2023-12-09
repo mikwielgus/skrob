@@ -56,12 +56,20 @@ def run(
     elif args.pass_forward:
         passforward_stream, output_stream = output_stream, passforward_stream
 
+    headers = {}
+
+    if args.add_headers:
+        for field_value in args.add_headers:
+            (field, value) = field_value.split(":", maxsplit=1)
+            headers[field] = value
+
     skrob = Skrob(args.code, output_stream, log_and_url_stream)
     result = asyncio.run(
         skrob.run(
             args.url or (sys.stdin.read() if not sys.stdin.isatty() else ""),
             limit_per_host=args.max_connections_per_host,
             limit=args.max_connections,
+            headers=headers,
             timeout=ClientTimeout(
                 connect=args.connect_timeout, total=args.total_timeout
             ),
@@ -142,6 +150,14 @@ def build_parser():
         default="300.0",
         type=float,
         help="Maximum time in seconds available for each transfer, i.e. the maximum sum of time spent on establishing connection, sending the request, and reading the response. Can be fractional, pass 0 to disable (default: %(default)s)",
+    )
+    parser.add_argument(
+        "-H",
+        "--add-header",
+        metavar="FIELD:VALUE",
+        dest="add_headers",
+        action="append",
+        help='Specify a custom HTTP header and its value, separated by a colon ":". This option can be used multiple times',
     )
 
     return parser

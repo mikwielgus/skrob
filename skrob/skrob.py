@@ -139,9 +139,12 @@ class Skrob(Bcfs):
         self._output_stream = output_stream
         self._url_stream = url_stream
 
-    async def run(self, args, timeout, **kwargs):
+    async def run(self, args, headers=None, timeout=300.0, **kwargs):
+        if "User-Agent" not in headers:
+            headers["User-Agent"] = f"Skrob {importlib.metadata.version('skrob')}"
+
         async with ClientSession(
-            connector=TCPConnector(**kwargs), timeout=timeout
+            connector=TCPConnector(**kwargs), headers=headers, timeout=timeout
         ) as session:
             # Convenience special handling in case we get input from stdin.
             if isinstance(args, list):
@@ -176,11 +179,7 @@ class Skrob(Bcfs):
             traceback.print_exc()
             sys.exit(1)
 
-        headers = {
-            "User-Agent": f"Skrob {importlib.metadata.version('skrob')}",
-        }
-
-        async with session.get(url, headers=headers) as response:
+        async with session.get(url) as response:
             text = await response.text()
 
             try:
