@@ -10,6 +10,7 @@ from yarl import URL
 from parsimonious.grammar import Grammar
 from parsimonious.nodes import NodeVisitor
 
+import importlib.metadata
 import traceback
 import dicttoxml
 import parsel
@@ -175,7 +176,11 @@ class Skrob(Bcfs):
             traceback.print_exc()
             sys.exit(1)
 
-        async with session.get(url) as response:
+        headers = {
+            "User-Agent": f"Skrob {importlib.metadata.version('skrob')}",
+        }
+
+        async with session.get(url, headers=headers) as response:
             text = await response.text()
 
             try:
