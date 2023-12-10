@@ -139,7 +139,7 @@ class Skrob(Bcfs):
         self._output_stream = output_stream
         self._url_stream = url_stream
 
-    async def run(self, args, headers=None, timeout=300.0, **kwargs):
+    async def run(self, args, cookie_jar=None, headers=None, timeout=300.0, **kwargs):
         if "User-Agent" not in headers:
             headers["User-Agent"] = f"Skrob {importlib.metadata.version('skrob')}"
 

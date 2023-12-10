@@ -1,10 +1,27 @@
 from skrob import Skrob
 from argparse import ArgumentParser
-from aiohttp import ClientTimeout
+from http.cookiejar import MozillaCookieJar
+from aiohttp import ClientTimeout, CookieJar
 from contextlib import nullcontext
 import importlib.metadata
 import asyncio
 import sys
+
+
+class SkrobCookieJar(CookieJar):
+    def save(self, file_path):
+        jar = MozillaCookieJar(file_path)
+        for name, cookie in self._cookies.items():
+            jar.set_cookie(cookie)
+
+        jar.save()
+
+    def load(self, file_path):
+        jar = MozillaCookieJar(file_path)
+        jar.load()
+
+        for cookie in jar:
+            self._cookies[cookie.name] = cookie
 
 
 class Tee:
@@ -63,6 +80,11 @@ def run(
             (field, value) = field_value.split(":", maxsplit=1)
             headers[field] = value
 
+    cookie_jar = SkrobCookieJar()
+
+    if args.cookie_jar:
+        cookie_jar.load(args.cookie_jar)
+
     skrob = Skrob(args.code, output_stream, log_and_url_stream)
     result = asyncio.run(
         skrob.run(
@@ -70,11 +92,15 @@ def run(
             limit_per_host=args.max_connections_per_host,
             limit=args.max_connections,
             headers=headers,
+            cookie_jar=SkrobCookieJar(),
             timeout=ClientTimeout(
                 connect=args.connect_timeout, total=args.total_timeout
             ),
         )
     )
+
+    if args.cookie_jar:
+        cookie_jar.save(args.cookie_jar)
 
     if result and passforward_stream:
         for context in result:
@@ -116,6 +142,21 @@ def build_parser():
     )
 
     parser.add_argument(
+        "-H",
+        "--add-header",
+        metavar="FIELD:VALUE",
+        dest="add_headers",
+        action="append",
+        help='Specify a custom HTTP header and its value, separated by a colon ":". This option can be used multiple times',
+    )
+    parser.add_argument(
+        "--cookie-jar",
+        metavar="FILE",
+        dest="cookie_jar",
+        help="Netscape-formatted (aka cookies.txt) file to read cookies from and overwrite afterwards",
+    )
+
+    parser.add_argument(
         "-n",
         "--max-connections-per-host",
         metavar="N",
@@ -150,14 +191,6 @@ def build_parser():
         default="300.0",
         type=float,
         help="Maximum time in seconds available for each transfer, i.e. the maximum sum of time spent on establishing connection, sending the request, and reading the response. Can be fractional, pass 0 to disable (default: %(default)s)",
-    )
-    parser.add_argument(
-        "-H",
-        "--add-header",
-        metavar="FIELD:VALUE",
-        dest="add_headers",
-        action="append",
-        help='Specify a custom HTTP header and its value, separated by a colon ":". This option can be used multiple times',
     )
 
     return parser
